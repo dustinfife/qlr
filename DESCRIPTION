@@ -1,0 +1,20 @@
+Package: qlr
+Type: Package
+Title: Perform quantitative literature reviews. 
+Version: 0.1
+Date: 2020-09-25
+Author: Dustin Fife
+Maintainer: Dustin Fife <fife.dustin@gmail.com>
+Description: Quantitative literature reviews are systematic quantitative reviews of archival literature. 
+  They are intended to be used to develop precise hypotheses (e.g., a correlation coefficient will fall
+  between 0.3 and 0.35), or for Bayesian priors. 
+License: GPL-2 | GPL-3
+Imports:
+  roxygen2, 
+  testthat, 
+  OpenMx
+Depends:
+  R (>= 2.10),
+  roxytest
+Roxygen: list(roclets = c("namespace", "rd", "roxytest::testthat_roclet"))
+RoxygenNote: 7.1.1
