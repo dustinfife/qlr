@@ -1,47 +1,28 @@
 require(tidyverse)
 require(OpenMx)
+require(flexplot)
 
 num_variables = 6
 size_correlation = sample(c("low", "mid", "high"), size=1)
 number_of_studies = 10
 
+
+display_all = function(i, rho_matrix, mc_final) {
+  pop = vechs(rho_matrix$cor)
+  val = unique(mc_final$Parameter)[i]
+  new_d = mc_final[mc_final$Parameter==val,]
+  return(flexplot(Pooled_Estimate~1, data=new_d) + geom_vline(xintercept = pop[i], col="red"))
+}
+
+
 # create population correlations
+set.seed(23443)
 rho_matrix = random_cor_cov(size = num_variables, cors=size_correlation)
+f = function(i, rho_matrix) {print(i); simulate_studies(rho_matrix, 10, .8, .7)}
+mc_results = 1:200 %>% map(safely(f), rho_matrix)
+mc_final = mc_results %>% map(pluck("result")) %>% bind_rows(.id = "iteration") 
+#save(mc_final, file="inst/data/mc_v2.Rdata")
+mc_final %>% dplyr::filter(Parameter == "a_b") %>% flexplot(~Pooled_Estimate~1, data=.) + geom_vline(xintercept = rho_matrix$cor[1,2])
+a = 1:length(unique(mc_final$Parameter)) %>%  map(display_all, rho_matrix, mc_final)
+cowplot::plot_grid(plotlist=a)
 
-# simulate for a bunch of studies
-study_correlations = 1:number_of_studies %>% map(map_studies,
-                            rho = rho_matrix,
-                            prob_any_missing=.8,
-                            prop_missing=.6)
-
-# input missing correlations and convert to columns
-study_correlations_NAd = study_correlations %>%
-    map_dfc(return_na_correlations,
-            letters[1:num_variables]) %>%
-    t %>%
-    data.frame()
-names(study_correlations_NAd) = name_vechs(letters[1:6], collapse = "_")
-# 
-# 
-# 
-# # impute the missing values
-# require(mice)
-# typeof(study_correlations_NAd)
-# imputed_matrix = mice(data.matrix(study_correlations_NAd), m=5, method="rf")
-# complete(imputed_matrix, 1)
-# study_correlations_NAd
-# 
-# summarize_imputation = function(i)
-# means = 1:5 %>% map()
-# 
-# #### loop through and average the correlations
-# mean.cors = data.frame(matrix(nrow=imps, ncol=unique.cors))
-# sd.cors = data.frame(matrix(nrow=imps, ncol=unique.cors))
-# i = 1
-# for (i in 1:nrow(mean.cors)){
-#     newd = complete(id, i)
-#     mean.cors[i,] = colMeans(newd[,-1])
-#     sd.cors[i,] = apply(newd[,-1], 2, sd)
-# }
-# colMeans(mean.cors)[c(1,2,p)]
-# apply(mean.cors,2,sd)[c(1,2,10)] + colMeans(sd.cors)[c(1,2,10)]

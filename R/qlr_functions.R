@@ -39,6 +39,64 @@ random_cor_cov = function(size=6, cors=c("high", "mid", "low"), sds=NULL){
     list(cor = cor_matrix, sd= sds, cov.mat = cov.mat)
 }
 
+#' Simulate a chosen number of studies based on a fixed correlation matrix
+#'
+#' @param rho_matrix The correlation matrix (obtained from \link{random_cor_cov}). 
+#' @param number_of_studies The total number of studies to simulate
+#' @param prob_any_missing The probability that any given study will have at least one missing correlation
+#' @param prop_missing The proportion of variables from each study that will have missing data
+#'
+#' @return
+#' @export
+#' @importFrom mice mice
+simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing = .5, prop_missing = .6, imputations=5){
+    # simulate for a bunch of studies
+    num_variables = nrow(rho_matrix$cor)
+    study_correlations = 1:number_of_studies %>% map(map_studies,
+                                                     rho = rho_matrix,
+                                                     prob_any_missing=prob_any_missing,
+                                                     prop_missing=prop_missing)
+    
+    # input missing correlations and convert to columns
+    study_correlations_NAd = study_correlations %>%
+        map_dfc(return_na_correlations, letters[1:num_variables]) %>%
+        t %>%
+        data.frame() 
+    names(study_correlations_NAd) = name_vechs(letters[1:num_variables], collapse = "_") 
+    study_correlations_NAd = fill_missing_columns(study_correlations_NAd)
+    # impute the missing values
+    #fill_missing_columns(study_correlations_NAd)
+    imputed_matrix = mice::mice(data.matrix(study_correlations_NAd), m=imputations, remove.collinear=FALSE)
+    imputed_summaries = summarize_imputations(imputations, imputed_matrix)
+    return(imputed_summaries)
+}
+
+
+
+
+summarize_single_imputation = function(i, imputed_matrix) {
+    complete(imputed_matrix, i) %>% 
+        summarise_all(.funs = list(M = ~   mean(x = ., na.rm=T),
+                                   S   = ~   var(x = ., na.rm=T))) %>% 
+        pivot_longer(everything(),
+                     names_to = c("set", ".value"),
+                     names_pattern = "(.+)_(.+)"
+        )
+}
+
+summarize_imputations = function(imps, imputed_matrix, vechs=T) {
+    imputed_summary = 1:imps %>% 
+        map_df(summarize_single_imputation, imputed_matrix) %>% 
+        group_by(set) %>% 
+        summarize(mean_mean = mean(M),
+                  vb = sd(M),
+                  vw = var(S)) %>% 
+        mutate(pooled_variance = vw + vb + vb/imps) %>% 
+        select(set, mean_mean, pooled_variance) %>% 
+        set_names(c("Parameter", "Pooled_Estimate", "Pooled_Variance"))
+    return(imputed_summary)
+    
+}
 
 #' Return the limits of a correlation
 #'
@@ -197,14 +255,16 @@ name_vechs = function(variable_names, collapse=":"){
 }
 
 
+# correlations_dframe = study_correlations_NAd
+# rho = random_cor_cov(size=5, cors="high")
+# cor_mat = simulate_a_study(rho, n=100, prob_any_missing=1, proportion_missing = .8)
+fill_missing_columns = function(correlations_dframe){
+    #browser()
+    all_missing = apply(correlations_dframe, 2, function(x) all(is.na(x)))
+    if (!all(all_missing)) return(correlations_dframe)
 
-# # rho = random_cor_cov(size=5, cors="high")
-# # cor_mat = simulate_a_study(rho, n=100, prob_any_missing=1, proportion_missing = .8)
-# fill_missing_columns = function(correlations_dframe){
-#     all_missing = apply(correlations_dframe, 2, function(x) all(is.na(x)))
-#     if (all(all_missing)) return(correlations_dframe)
-#     
-#     random_correlations = runif(nrow(correlations_dframe)*length(sum(all_missing)),
-#                                 -1, 1)
-#     correlations_dframe[,all_missing] = random_correlations
-# }
+    random_correlations = runif(nrow(correlations_dframe)*length(sum(all_missing)),
+                                -1, 1)
+    correlations_dframe[,all_missing] = random_correlations
+}
+ 

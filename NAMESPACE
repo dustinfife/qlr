@@ -2,4 +2,6 @@
 
 export(fill_matrix)
 export(random_cor_cov)
+export(simulate_studies)
 importFrom(OpenMx,vechs)
+importFrom(mice,mice)
