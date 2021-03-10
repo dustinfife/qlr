@@ -11,7 +11,7 @@ display_all = function(i, rho_matrix, mc_final) {
   pop = vechs(rho_matrix$cor)
   val = unique(mc_final$Parameter)[i]
   new_d = mc_final[mc_final$Parameter==val,]
-  return(flexplot(Pooled_Estimate~1, data=new_d) + geom_vline(xintercept = pop[i], col="red"))
+  return(flexplot(Pooled_Estimate~1, data=new_d) + geom_vline(xintercept = pop[i], col="red") + coord_cartesian(xlim=c(0, 1)))
 }
 
 

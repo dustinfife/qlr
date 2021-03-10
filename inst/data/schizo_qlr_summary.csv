@@ -1,0 +1,44 @@
+oly"","combined","n","median","mean","sd"
+"1","IA---IN",7,0.2,0.153571428571429,0.147102976565009
+"2","CD---IN",6,0.445,0.3995,0.143323061647454
+"3","UE---CD",6,0.561,0.500333333333333,0.137494242303693
+"4","UE---IA",6,0.1,0.0816666666666667,0.112679486450137
+"5","UE---IN",6,0.505,0.525,0.0779102047231298
+"6","Chap Percep---Chap Soc Anhed",5,0.327,0.2748,0.160376743949988
+"7","Chap Percep---Chap Mag Idea",4,0.7465,0.734,0.0494435705291059
+"8","IN---QOL",4,-0.425,-0.40775,0.0563345660614629
+"9","SPQ-B Disorganized---MSSB Disorganized",4,0.555,0.555,0.00577350269189626
+"10","SPQ-B Disorganized---MSSB Negative",4,0.375,0.375,0.0173205080756888
+"11","SPQ-B Disorganized---MSSB Positive",4,0.41,0.41,0.0461880215351701
+"12","SPQ-B Negative---MSSB Disorganized",4,0.43,0.43,0
+"13","SPQ-B Negative---MSSB Negative",4,0.5,0.5,0.0115470053837925
+"14","SPQ-B Negative---MSSB Positive",4,0.27,0.27,0.0346410161513775
+"15","BPRS---GWB",3,0.2,0.0333333333333333,0.369368831025756
+"16","BPRS---SF",3,-0.11,0.01,0.243310501211929
+"17","CD---IA",3,0.45,0.421666666666667,0.110264832713487
+"18","CD---QOL",3,-0.41,-0.439,0.0502294734194975
+"19","Chap Mag Idea---Chap Soc Anhed",3,0.25,0.156666666666667,0.19731531449265
+"20","GWB---SF",3,0.29,0.226666666666667,0.109696551146029
+"21","IA---CD",3,0.38,0.343333333333333,0.0635085296108588
+"22","IA---QOL",3,-0.21,-0.337333333333333,0.220547802830437
+"23","UE---QOL",3,-0.45,-0.39,0.103923048454133
+"24","---",2,0.29,0.29,0
+"25","CD---O-LIFE Total",2,0.87,0.87,0
+"26","Chap Soc Anhed---Chap Mag Idea",2,0.211,0.211,0
+"27","IA---O-LIFE Total",2,0.44,0.44,0
+"28","IN---O-LIFE Total",2,0.77,0.77,0
+"29","O-LIFE Total---QOL",2,-0.52,-0.52,0
+"30","SANS---QOL",2,-0.7805,-0.7805,0.0148492424049175
+"31","SPQ Disorganized---PWI (Personal well-being index",2,-0.42,-0.42,0
+"32","SPQ Negative---PWI (Personal well-being index",2,-0.58,-0.58,0
+"33","SPQ Positive---PWI (Personal well-being index",2,-0.38,-0.38,0
+"34","SPQ---Chap Mag Idea",2,0.724,0.724,0
+"35","SPQ---Chap Percep",2,0.701,0.701,0
+"36","SPQ---Chap Soc Anhed",2,0.475,0.475,0
+"37","SPQ-B Positive---MSS Disorganized",2,0.38,0.38,0
+"38","SPQ-B Positive---MSS Negative",2,0.16,0.16,0
+"39","SPQ-B Positive---MSS Positive",2,0.69,0.69,0
+"40","SPQ-B Positive---MSSB Disorganized",2,0.4,0.4,0
+"41","SPQ-B Positive---MSSB Negative",2,0.17,0.17,0
+"42","SPQ-B Positive---MSSB Positive",2,0.71,0.71,0
+"43","UE---O-LIFE Total",2,0.85,0.85,0

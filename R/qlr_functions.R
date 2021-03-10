@@ -49,7 +49,8 @@ random_cor_cov = function(size=6, cors=c("high", "mid", "low"), sds=NULL){
 #' @return
 #' @export
 #' @importFrom mice mice
-simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing = .5, prop_missing = .6, imputations=5){
+simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing = .5, prop_missing = .6, imputations=5, return.list=FALSE){
+
     # simulate for a bunch of studies
     num_variables = nrow(rho_matrix$cor)
     study_correlations = 1:number_of_studies %>% map(map_studies,
@@ -57,21 +58,45 @@ simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing =
                                                      prob_any_missing=prob_any_missing,
                                                      prop_missing=prop_missing)
     
+    if (return.list) return(study_correlations)
     # input missing correlations and convert to columns
-    study_correlations_NAd = study_correlations %>%
-        map_dfc(return_na_correlations, letters[1:num_variables]) %>%
+    study_correlations_NAd = correlations_to_columns(study_correlations, T)
+    
+    # impute the missing values
+    return(impute_correlations(study_correlations_NAd, imputations))
+}
+
+#' @tests 
+#' rho = random_cor_cov(size=5, cors="high")
+#' study_correlations = simulate_studies(rho, 10, .2, .2, 5, T)
+#' test = correlations_to_columns(study_correlations, fill_missing=T)
+#' testthat::expect_equal(ncol(test), (5*4)/2)
+correlations_to_columns = function(study_correlations, fill_missing = TRUE) {
+    # extract the variable names
+    unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
+    matrix_correlations = study_correlations %>%
+        map_dfc(return_na_correlations, unique_varnames) %>%
         t %>%
         data.frame() 
-    names(study_correlations_NAd) = name_vechs(letters[1:num_variables], collapse = "_") 
-    study_correlations_NAd = fill_missing_columns(study_correlations_NAd)
-    # impute the missing values
-    #fill_missing_columns(study_correlations_NAd)
-    imputed_matrix = mice::mice(data.matrix(study_correlations_NAd), m=imputations, remove.collinear=FALSE)
+    
+    # figure out unique variable names
+    unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
+    names(matrix_correlations) = name_vechs(unique_varnames, collapse = "_") 
+    if (fill_missing) return(fill_missing_columns(matrix_correlations))
+    return(matrix_correlations)
+}
+
+#' @tests 
+#' rho = random_cor_cov(size=5, cors="high")
+#' study_correlations = simulate_studies(rho, 10, .5, .5, 5, T)
+#' columns = correlations_to_columns(study_correlations, fill_missing=T)
+#' imputations = impute_correlations(columns)
+#' testthat::expect_true(ncol(imputations)==3)
+impute_correlations = function(study_correlations, imputations=5) {
+    imputed_matrix = mice::mice(data.matrix(study_correlations), m=imputations, remove.collinear=FALSE)
     imputed_summaries = summarize_imputations(imputations, imputed_matrix)
     return(imputed_summaries)
 }
-
-
 
 
 summarize_single_imputation = function(i, imputed_matrix) {
@@ -95,7 +120,6 @@ summarize_imputations = function(imps, imputed_matrix, vechs=T) {
         select(set, mean_mean, pooled_variance) %>% 
         set_names(c("Parameter", "Pooled_Estimate", "Pooled_Variance"))
     return(imputed_summary)
-    
 }
 
 #' Return the limits of a correlation
@@ -140,7 +164,6 @@ return_cor_limits = function(cors=c("high", "mid", "low")) {
 #' example_cor = fill_matrix(size=5, cors="high")
 #' testthat::expect_true(all(example_cor>.5))
 #' testthat::expect_true(det(example_cor)>0)
-
 fill_matrix = function(size=6, cors=c("high", "mid", "low"), check.pd = TRUE){
     
     cors = match.arg(cors)
@@ -218,7 +241,7 @@ remove_some_variables = function(data, prob_any_missing = 1, proportion_missing=
 #' # If a number, it will sample with that n
 #' testthat::expect_true(isSymmetric(map_studies(1, random_cor_cov(cors="low"), n=100)))
 map_studies = function(number, rho, prob_any_missing=.5, prop_missing=.2, n=T) {
-
+#browser()
     if (n == TRUE) n = sample(c(30, 100, 200, 500, 1000), size=1)
     return(simulate_a_study(rho, n, prob_any_missing, prop_missing))
     
