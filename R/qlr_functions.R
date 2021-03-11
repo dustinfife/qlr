@@ -19,12 +19,6 @@
 #' @examples
 #' random_cor_cov(size=4, cors="low")
 #' random_cor_cov(size=3, cors="mid", sds = c(5,5,5))
-#' @tests
-#' example_cor = random_cor_cov(size=5, cors="high", sds=c(1,2,3,4,5))
-#' testthat::expect_true(length(names(example_cor))==3)
-#' testthat::expect_true(example_cor$sd[1] == 1)
-#' example_cor = random_cor_cov(size=5, cors="high")
-#' testthat::expect_true(all(example_cor$sd^2 == diag(example_cor$cov.mat)))
 random_cor_cov = function(size=6, cors=c("high", "mid", "low"), sds=NULL){
 
     cor_matrix = fill_matrix(size, cors, check.pd=TRUE)
@@ -38,6 +32,55 @@ random_cor_cov = function(size=6, cors=c("high", "mid", "low"), sds=NULL){
     
     list(cor = cor_matrix, sd= sds, cov.mat = cov.mat)
 }
+
+# this function takescolumn data matrix and turns into list ofmatrices
+#' @importFrom dplyr group_by group_split
+#' @importFrom rlang sym `!!`
+#' @importFrom purrr map
+matrix_lists = function(d, id="id", v1="v1", v2="v2", value="value") {
+    
+    # make sure all variables are in the dataset
+    user_supplied_names = c(id, v1, v2, value)
+    if (!(all(user_supplied_names %in% names(d)))){
+        missingvar = which(!(user_supplied_names %in% names(d)))
+        stop(paste0(user_supplied_names[missingvar], 
+                    " is not a variable in your dataset"))
+    }
+    
+    # loop through and convert to list
+    id_name = rlang::sym(id)
+    d = d %>% dplyr::group_by(!!(id_name)) %>% dplyr::group_split() %>% 
+        purrr::map(columns_to_lists, v1=v1, v2=v2, value=value)
+    return(d)
+}
+
+    #' @importFrom purrr map_dbl
+    columns_to_lists = function(group_correlations, v1="v1", v2="v2", value="value") {
+        
+        group_correlations[[v1]] = as.character(group_correlations[[v1]])
+        group_correlations[[v2]] = as.character(group_correlations[[v2]])
+        # find names of all variables
+        unique_vars = unique(c(group_correlations[[v1]], group_correlations[[v2]]))
+        all_names = combn(unique_vars, 2, simplify=F)
+        
+        # create empty  matrix of data
+        ordered_values = purrr::map_dbl(all_names, 
+                function(x) assign_correlations(x, group_correlations, v1=v1, v2=v2, value=value))
+        cor_mat = diag(nrow=length(unique_vars), ncol=length(unique_vars))
+        cor_mat[lower.tri(cor_mat)] = ordered_values
+        cor_mat[upper.tri(cor_mat)] = ordered_values
+        cor_mat = data.frame(cor_mat)
+        names(cor_mat) = rownames(cor_mat)= unique_vars
+        return(cor_mat)
+    }
+    #helper function for columns_to_lists
+    # given a pair of variable names, this will return the corresponding value
+    assign_correlations = function(x, group_correlations, v1="v1", v2="v2", value="value") {
+      #
+      id = which(group_correlations[[v1]] == x[1] & group_correlations[[v2]] == x[2])
+      if (length(id)==0) return(NA)
+      return(group_correlations[[value]][id][1])
+    }
 
 #' Simulate a chosen number of studies based on a fixed correlation matrix
 #'
@@ -66,50 +109,51 @@ simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing =
     return(impute_correlations(study_correlations_NAd, imputations))
 }
 
-#' @tests 
-#' rho = random_cor_cov(size=5, cors="high")
-#' study_correlations = simulate_studies(rho, 10, .2, .2, 5, T)
-#' test = correlations_to_columns(study_correlations, fill_missing=T)
-#' testthat::expect_equal(ncol(test), (5*4)/2)
-correlations_to_columns = function(study_correlations, fill_missing = TRUE) {
-    # extract the variable names
-    unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
-    matrix_correlations = study_correlations %>%
-        map_dfc(return_na_correlations, unique_varnames) %>%
-        t %>%
-        data.frame() 
+  correlations_to_columns = function(study_correlations, fill_missing = TRUE) {
+      # extract the variable names
+  
+      unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
+      matrix_correlations = study_correlations %>%
+          map_dfc(return_na_correlations, unique_varnames) %>%
+          t %>%
+          data.frame() 
+      
+      # figure out unique variable names
+      unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
+      names(matrix_correlations) = name_vechs(unique_varnames, collapse = "_") 
+      if (fill_missing) return(fill_missing_columns(matrix_correlations))
+      return(matrix_correlations)
+  }
     
-    # figure out unique variable names
-    unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
-    names(matrix_correlations) = name_vechs(unique_varnames, collapse = "_") 
-    if (fill_missing) return(fill_missing_columns(matrix_correlations))
-    return(matrix_correlations)
-}
+      #' @importFrom OpenMx vechs
+      return_na_correlations = function(cor_mat, variable_names, vechs=TRUE) {
+  
+        ## create NA matrix
+        na_cor_mat = data.frame(matrix(NA, nrow=length(variable_names), ncol=length(variable_names)))
+        names(na_cor_mat) = row.names(na_cor_mat) = variable_names
+        not_missing = row.names(cor_mat)
+        
+        ## replace NA matrix where we have data
+        na_cor_mat[not_missing, not_missing] = cor_mat
+        
+        if (vechs) return(OpenMx::vechs(na_cor_mat))
+        na_cor_mat
+      }
 
-#' @tests 
-#' rho = random_cor_cov(size=5, cors="high")
-#' study_correlations = simulate_studies(rho, 10, .5, .5, 5, T)
-#' columns = correlations_to_columns(study_correlations, fill_missing=T)
-#' imputations = impute_correlations(columns)
-#' testthat::expect_true(ncol(imputations)==3)
-impute_correlations = function(study_correlations, imputations=5) {
-    imputed_matrix = mice::mice(data.matrix(study_correlations), m=imputations, remove.collinear=FALSE)
-    imputed_summaries = summarize_imputations(imputations, imputed_matrix)
-    return(imputed_summaries)
-}
+  impute_correlations = function(study_correlations, imputations=5, filter_na=TRUE) {
+      
+      imputed_matrix = mice::mice(data.matrix(study_correlations), 
+                                  m=imputations, remove.collinear=FALSE,
+                                  method="rf")
+      imputed_summaries = summarize_imputations(imputations, imputed_matrix)
+      return(imputed_summaries)
+  }
 
 
-summarize_single_imputation = function(i, imputed_matrix) {
-    complete(imputed_matrix, i) %>% 
-        summarise_all(.funs = list(M = ~   mean(x = ., na.rm=T),
-                                   S   = ~   var(x = ., na.rm=T))) %>% 
-        pivot_longer(everything(),
-                     names_to = c("set", ".value"),
-                     names_pattern = "(.+)_(.+)"
-        )
-}
+
 
 summarize_imputations = function(imps, imputed_matrix, vechs=T) {
+  
     imputed_summary = 1:imps %>% 
         map_df(summarize_single_imputation, imputed_matrix) %>% 
         group_by(set) %>% 
@@ -122,6 +166,17 @@ summarize_imputations = function(imps, imputed_matrix, vechs=T) {
     return(imputed_summary)
 }
 
+    summarize_single_imputation = function(i, imputed_matrix) {
+      
+      complete(imputed_matrix, i) %>% 
+        summarise_all(.funs = list(M = ~   mean(x = ., na.rm=T),
+                                   S   = ~   var(x = ., na.rm=T))) %>% 
+        pivot_longer(everything(),
+                     names_to = c("set", ".value"),
+                     names_pattern = "(.+)_(.+)"
+        )
+    }
+
 #' Return the limits of a correlation
 #'
 #' @param cors The size of the correlations between variables. Current options
@@ -129,10 +184,6 @@ summarize_imputations = function(imps, imputed_matrix, vechs=T) {
 #' other options
 #'
 #' @return A vector containing the ranges of the correlations
-#' @tests 
-#' testthat::expect_equal(return_cor_limits("high")[1], 0.5)
-#' testthat::expect_equal(return_cor_limits("mid")[1], 0.2)
-#' testthat::expect_equal(return_cor_limits("low")[1], 0.05)
 return_cor_limits = function(cors=c("high", "mid", "low")) {
     if (cors=="high") return(c(.5, .8))
     if (cors=="mid") return(c(.2, .5))
@@ -160,10 +211,6 @@ return_cor_limits = function(cors=c("high", "mid", "low")) {
 #' @examples
 #' fill_matrix(size=5, cors="high")
 #' fill_matrix(size=25, cors="high", check.pd=FALSE)
-#' @tests 
-#' example_cor = fill_matrix(size=5, cors="high")
-#' testthat::expect_true(all(example_cor>.5))
-#' testthat::expect_true(det(example_cor)>0)
 fill_matrix = function(size=6, cors=c("high", "mid", "low"), check.pd = TRUE){
     
     cors = match.arg(cors)
@@ -191,9 +238,6 @@ fill_matrix = function(size=6, cors=c("high", "mid", "low"), check.pd = TRUE){
 }
 
 
-
-#' @tests
-#' testthat::expect_true(isSymmetric(make_matrix_symmetric(diag(1, nrow=3), runif(3))))
 make_matrix_symmetric = function(cor.mat, cor.vals){
     cor.mat[lower.tri(cor.mat)] = cor.vals
     cor.mat[upper.tri(cor.mat)] = cor.vals
@@ -218,11 +262,6 @@ simulate_a_study = function(rho, n, prob_any_missing, proportion_missing=0, cov=
     return(cor(data))
 }
 
-#' @tests
-#' cor_mat = fill_matrix(10,cors = "mid")
-#' data = MASS::mvrnorm(100, mu=rep(0, times=10), Sigma = cor_mat)
-#' testthat::expect_true(all(head(data)==head(remove_some_variables(data, prob_any_missing = 0))))
-#' testthat::expect_true(ncol(remove_some_variables(data, 1, .2))==8)
 remove_some_variables = function(data, prob_any_missing = 1, proportion_missing=0) {
     
     if (runif(1)>prob_any_missing) return(data)
@@ -236,41 +275,13 @@ remove_some_variables = function(data, prob_any_missing = 1, proportion_missing=
     return(data[, -rows_to_remove])    
 }
 
-#' @tests
-#' # n param either TRUE or a number. If TRUE, it will randomly sample a sample size. 
-#' # If a number, it will sample with that n
-#' testthat::expect_true(isSymmetric(map_studies(1, random_cor_cov(cors="low"), n=100)))
 map_studies = function(number, rho, prob_any_missing=.5, prop_missing=.2, n=T) {
-#browser()
+#
     if (n == TRUE) n = sample(c(30, 100, 200, 500, 1000), size=1)
     return(simulate_a_study(rho, n, prob_any_missing, prop_missing))
     
 }
 
-#' @importFrom OpenMx vechs
-#' @tests
-#' # a function that takes a correlation, takes ALL variables, and puts NA where variables are missing
-#' rho = random_cor_cov(size=5, cors="high")
-#' cor_mat = simulate_a_study(rho, n=100, prob_any_missing=1, proportion_missing = .6)
-#' variable_names = letters[1:5]
-#' length_varnames = length(variable_names)
-#' testthat::expect_true(ncol(return_na_correlations(cor_mat, variable_names, vechs=FALSE)) == length_varnames)
-#' testthat::expect_true(length(return_na_correlations(cor_mat, variable_names, vechs=TRUE)) == (length_varnames*(length_varnames-1))/2)
-return_na_correlations = function(cor_mat, variable_names, vechs=TRUE) {
-    
-    ## create NA matrix
-    na_cor_mat = data.frame(matrix(NA, nrow=length(variable_names), ncol=length(variable_names)))
-    names(na_cor_mat) = row.names(na_cor_mat) = variable_names
-    not_missing = row.names(cor_mat)
-    ## replace NA matrix where we have data
-    na_cor_mat[not_missing, not_missing] = cor_mat
-    
-    if (vechs) return(OpenMx::vechs(na_cor_mat))
-    na_cor_mat
-}
-
-#' @tests
-#' testthat::expect_true(name_vechs(letters[1:3])[3]=="b:c")
 name_vechs = function(variable_names, collapse=":"){
     combn(variable_names, 
           m=2, 
@@ -282,12 +293,12 @@ name_vechs = function(variable_names, collapse=":"){
 # rho = random_cor_cov(size=5, cors="high")
 # cor_mat = simulate_a_study(rho, n=100, prob_any_missing=1, proportion_missing = .8)
 fill_missing_columns = function(correlations_dframe){
-    #browser()
-    all_missing = apply(correlations_dframe, 2, function(x) all(is.na(x)))
-    if (!all(all_missing)) return(correlations_dframe)
 
-    random_correlations = runif(nrow(correlations_dframe)*length(sum(all_missing)),
+    all_missing = apply(correlations_dframe, 2, function(x) all(is.na(x)))
+    if (!any(all_missing)) return(correlations_dframe)
+    random_correlations = runif(nrow(correlations_dframe)*sum(all_missing),
                                 -1, 1)
     correlations_dframe[,all_missing] = random_correlations
+    return(correlations_dframe)
 }
  

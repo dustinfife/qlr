@@ -9,7 +9,8 @@ simulate_studies(
   number_of_studies = 10,
   prob_any_missing = 0.5,
   prop_missing = 0.6,
-  imputations = 5
+  imputations = 5,
+  return.list = FALSE
 )
 }
 \arguments{

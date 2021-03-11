@@ -11,6 +11,38 @@ test_that("Function random_cor_cov() @ L28", {
 })
 
 
+
+group_correlations = data.frame(id = c(4,4,4, 3,3,3), 
+                                value = c(.1, .2, .3, .1,.1,.1), 
+                                v1 = c("a", "a", "b","a", "a", "b"), 
+                                v2 = c("b", "c", "c", "b", "c", "c"))
+test_that("matrix_lists works", {
+  expect_equal(matrix_lists(group_correlations)[[2]][1,3], 0.2, tol=.001)
+  expect_equal(matrix_lists(group_correlations[1:3,])[[1]][1,3], 0.2, tol=.001)  
+  expect_error(matrix_lists(group_correlations, id="id2"))
+})
+
+  test_that("columns_to_lists works", {
+    expect_equal(columns_to_lists(group_correlations)[2,3], .3, tol=.001)
+  })
+
+  test_that("assign_correlations works", {
+    expect_equal(assign_correlations(x=c("a", "b"), group_correlations), .1, tol=.001)
+  })
+
+#' rho = random_cor_cov(size=5, cors="high")
+#' study_correlations = simulate_studies(rho, 10, .5, .5, 5, T)
+#' columns = correlations_to_columns(study_correlations, fill_missing=T)
+#' imputations = impute_correlations(columns)
+#' testthat::expect_true(ncol(imputations)==3)
+#' 
+#' #' example_cor = random_cor_cov(size=5, cors="high", sds=c(1,2,3,4,5))
+#' testthat::expect_true(length(names(example_cor))==3)
+#' testthat::expect_true(example_cor$sd[1] == 1)
+#' example_cor = random_cor_cov(size=5, cors="high")
+#' testthat::expect_true(all(example_cor$sd^2 == diag(example_cor$cov.mat)))
+
+
 test_that("Function return_cor_limits() @ L54", {
   testthat::expect_equal(return_cor_limits("high")[1], 0.5)
   testthat::expect_equal(return_cor_limits("mid")[1], 0.2)

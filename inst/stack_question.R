@@ -1,6 +1,6 @@
-
+# this function takescolumn data matrix and turns into list ofmatrices
 columns_to_lists = function(group_correlations) {
-  #browser()
+  
   # find names of all variables
   unique_vars = unique(c(group_correlations$v1, group_correlations$v2))
   all_names = combn(unique_vars, 2, simplify=F)
