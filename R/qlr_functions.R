@@ -110,8 +110,8 @@ simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing =
 }
 
   correlations_to_columns = function(study_correlations, fill_missing = TRUE) {
+      
       # extract the variable names
-  
       unique_varnames = study_correlations %>% map(colnames) %>% unlist %>% unique
       matrix_correlations = study_correlations %>%
           map_dfc(return_na_correlations, unique_varnames) %>%
@@ -150,19 +150,23 @@ simulate_studies = function(rho_matrix, number_of_studies=10, prob_any_missing =
   }
 
 
-
+unvechs = function(correlations) {
+  k = length(correlations)
+  num_vars = (1 + sqrt(1 + 8*k))/2
+  cor_matrix = diag(1, nrow=num_vars, ncol=num_vars)
+  cor_matrix[lower.tri(cor_matrix)] = as.numeric(correlations)
+  cor_matrix[upper.tri(cor_matrix)]= as.numeric(correlations)
+  cor_matrix
+}
 
 summarize_imputations = function(imps, imputed_matrix, vechs=T) {
-  
     imputed_summary = 1:imps %>% 
-        map_df(summarize_single_imputation, imputed_matrix) %>% 
-        group_by(set) %>% 
-        summarize(mean_mean = mean(M),
-                  vb = sd(M),
-                  vw = var(S)) %>% 
-        mutate(pooled_variance = vw + vb + vb/imps) %>% 
-        select(set, mean_mean, pooled_variance) %>% 
-        set_names(c("Parameter", "Pooled_Estimate", "Pooled_Variance"))
+        # creates a list of data frames
+        map(~complete(imputed_matrix, .x)) %>% 
+        # gets to data frame level
+        map_dfr(~ .x %>% mutate(study = 1:nrow(.x))) %>% 
+        group_by(study) %>% 
+        summarize_all(mean)
     return(imputed_summary)
 }
 
@@ -293,12 +297,23 @@ name_vechs = function(variable_names, collapse=":"){
 # rho = random_cor_cov(size=5, cors="high")
 # cor_mat = simulate_a_study(rho, n=100, prob_any_missing=1, proportion_missing = .8)
 fill_missing_columns = function(correlations_dframe){
-
-    all_missing = apply(correlations_dframe, 2, function(x) all(is.na(x)))
-    if (!any(all_missing)) return(correlations_dframe)
-    random_correlations = runif(nrow(correlations_dframe)*sum(all_missing),
-                                -1, 1)
-    correlations_dframe[,all_missing] = random_correlations
+  
+    # if there are no missing columns, just return the original dataset
+    imputable_columns = apply(correlations_dframe, 2, function(x) length(which(!(is.na(x))))>1)
+    if (!any(imputable_columns)) return(correlations_dframe)
+    
+    # subset the correlations that need to be noninformatively imputed and fill in with random missing values
+    new_correlations = as.matrix(correlations_dframe[,!imputable_columns])
+    na_cells = is.na(new_correlations)
+    
+    # generate with fisher's z
+    random_z = rnorm(length(which(na_cells)))
+    random_r = tanh(random_z)
+                                
+    new_correlations[na_cells] = random_correlations
+    
+    # merge the new imputed data with the old dataset
+    correlations_dframe[,!imputable_columns] = new_correlations
     return(correlations_dframe)
 }
  
