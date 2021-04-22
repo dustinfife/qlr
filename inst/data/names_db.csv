@@ -1,0 +1,41 @@
+db_names,model_names
+Acculturative Stress,
+BPRS,
+CAPE Negative,
+CAPE Positive,
+CD,olife_cd
+Chap Mag Idea,wss_mi
+Chap Percep,wss_per
+Chap Phys Anhed,wss_phys
+Chap Soc Anhed,wss_sa
+GHQ,
+GWB,
+IA,olife_ia
+IN,olife_in
+MSS Disorganized,mssb_dis
+MSS Negative,mssb_pos
+MSS Positive,mssb_neg
+MSSB Disorganized,mssb_dis
+MSSB Negative,mssb_neg
+MSSB Positive,mssb_pos
+PANSS Negative,
+PANSS Positive,
+PSS,
+Psych QOL,
+PWI (Personal well-being index,
+QOL,
+SANS,
+SAPS,
+SF,
+SFS (Social Functioning Scale),
+SIPS Disorganized,
+SIPS Negative,
+SIPS Positive,
+SPQ,
+SPQ Disorganized,spqbr_dis
+SPQ Negative,spqbr_neg
+SPQ Positive,spqbr_pos
+Subjective QOL,
+UE,olife_ue
+WSS Negative,
+WSS Positive,

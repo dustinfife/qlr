@@ -305,13 +305,13 @@ fill_missing_columns = function(correlations_dframe){
     # subset the correlations that need to be noninformatively imputed and fill in with random missing values
     new_correlations = as.matrix(correlations_dframe[,!imputable_columns])
     na_cells = is.na(new_correlations)
-    
+
     # generate with fisher's z
-    random_z = rnorm(length(which(na_cells)))
-    random_r = tanh(random_z)
-                                
-    new_correlations[na_cells] = random_correlations
-    
+    #random_z = rnorm(length(which(na_cells)), .1)
+    #random_r = tanh(random_z)
+                 #hist(random_r)               
+    random_r = (rbeta(length(which(na_cells)), 4,4)*2-1)
+    new_correlations[na_cells] = random_r
     # merge the new imputed data with the old dataset
     correlations_dframe[,!imputable_columns] = new_correlations
     return(correlations_dframe)
